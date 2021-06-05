@@ -29,11 +29,6 @@ impl Controller {
             object.update(self, duration);
         }
 
-        self.up_pressed = false;
-        self.down_pressed = false;
-        self.left_pressed = false;
-        self.right_pressed = false;
-        self.dragged = false;
         self.last_cursor = self.current_cursor;
     }
 
