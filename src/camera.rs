@@ -1,6 +1,6 @@
 use std::fmt::Debug;
 
-use cgmath::{Matrix4, One, PerspectiveFov, Quaternion, Rotation3, Vector3, Rad};
+use cgmath::{Matrix4, One, PerspectiveFov, Quaternion, Rad, Rotation3, Transform, Vector3};
 use cgmath::{Decomposed, Deg};
 
 use crate::controller::{ControllerUpdate, Controller};
@@ -31,7 +31,8 @@ impl Camera {
     }
 
     pub fn get_view(&self) -> Matrix4<f32> {
-        self.transform.into()
+        let inverse_view: Matrix4<f32> = self.transform.into();
+        inverse_view.inverse_transform().unwrap()
     }
 
     pub fn get_proj(&self) -> Matrix4<f32> {
