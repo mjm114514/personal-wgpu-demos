@@ -1,3 +1,4 @@
+use cgmath::{Deg, PerspectiveFov};
 use wgpu::util::DeviceExt;
 use winit::{
     event::*,
@@ -5,8 +6,10 @@ use winit::{
     window::{WindowBuilder, Window},
 };
 use futures::executor::block_on;
+use camera::Camera;
 
 mod texture;
+mod camera;
 
 #[repr(C)]
 #[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
@@ -50,33 +53,6 @@ const INDICES: &[u16] = &[
     2, 3, 4,
 ];
 
-#[rustfmt::skip]
-pub const OPENGL_TO_WGPU_MATRIX: cgmath::Matrix4<f32> = cgmath::Matrix4::new(
-    1.0, 0.0, 0.0, 0.0,
-    0.0, 1.0, 0.0, 0.0,
-    0.0, 0.0, 0.5, 0.0,
-    0.0, 0.0, 0.5, 1.0,
-);
-
-struct Camera {
-    eye: cgmath::Point3<f32>,
-    target: cgmath::Point3<f32>,
-    up: cgmath::Vector3<f32>,
-    aspect: f32,
-    fovy: f32,
-    znear: f32,
-    zfar: f32,
-}
-
-impl Camera {
-    fn build_view_projection_matrix(&self) -> cgmath::Matrix4<f32> {
-        let view = cgmath::Matrix4::look_at_rh(self.eye, self.target, self.up);
-        let proj = cgmath::perspective(cgmath::Deg(self.fovy), self.aspect, self.znear, self.zfar);
-
-        OPENGL_TO_WGPU_MATRIX * proj * view
-    }
-}
-
 #[repr(C)]
 #[derive(Debug, Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
 struct Uniforms {
@@ -92,7 +68,7 @@ impl Uniforms {
     }
 
     fn update_view_proj(&mut self, camera: &Camera) {
-        self.view_proj = camera.build_view_projection_matrix().into();
+        self.view_proj = camera.get_view_proj().into();
     }
 }
 
@@ -201,15 +177,7 @@ impl State {
             }
         );
 
-        let camera = Camera {
-            eye: (0.0, 1.0, 2.0).into(),
-            target: (0.0, 0.0, 0.0).into(),
-            up: cgmath::Vector3::unit_y(),
-            aspect: swap_chain_desc.width as f32 / swap_chain_desc.height as f32,
-            fovy: 45.0,
-            znear: 0.1,
-            zfar: 100.0,
-        };
+        let camera = Camera::new(swap_chain_desc.width as f32 / swap_chain_desc.height as f32);
 
         let mut uniforms = Uniforms::new();
         uniforms.update_view_proj(&camera);
@@ -342,6 +310,13 @@ impl State {
         self.swap_chain_desc.width = new_size.width;
         self.swap_chain_desc.height = new_size.height;
         self.swap_chain = self.device.create_swap_chain(&self.surface, &self.swap_chain_desc);
+
+        self.camera.set_lens(PerspectiveFov {
+            aspect: self.swap_chain_desc.width as f32 / self.swap_chain_desc.height as f32,
+            far: 0.1,
+            near: 100.0,
+            fovy: Deg(45.0).into(),
+        });
     }
 
     fn input(&mut self, event: &WindowEvent) -> bool {
@@ -384,6 +359,7 @@ impl State {
 
             render_pass.set_pipeline(&self.render_pipeline);
             render_pass.set_bind_group(0, &self.diffuse_bind_group, &[]);
+            render_pass.set_bind_group(1, &self.uniform_bind_group, &[]);
             render_pass.set_vertex_buffer(0, self.vertex_buffer.slice(..));
             render_pass.set_index_buffer(self.index_buffer.slice(..), wgpu::IndexFormat::Uint16);
             render_pass.draw_indexed(0..self.num_indices, 0, 0..1);
