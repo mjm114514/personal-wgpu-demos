@@ -1,5 +1,9 @@
+use std::fmt::Debug;
+
 use cgmath::{Matrix4, One, PerspectiveFov, Quaternion, Rotation3, Vector3, Rad};
 use cgmath::{Decomposed, Deg};
+
+use crate::controller::{ControllerUpdate, Controller};
 
 #[rustfmt::skip]
 pub const OPENGL_TO_WGPU_MATRIX: cgmath::Matrix4<f32> = cgmath::Matrix4::new(
@@ -59,7 +63,24 @@ impl Camera {
         self.transform.rot = Quaternion::from_angle_y(Deg(angle)) * self.transform.rot;
     }
 
-    pub fn Pitch(&mut self, angle: f32) {
+    pub fn pitch(&mut self, angle: f32) {
         self.transform.rot = Quaternion::from_angle_x(Deg(angle)) * self.transform.rot;
+    }
+}
+
+impl ControllerUpdate for Camera {
+    fn update(&mut self, controller: &Controller, duration: f32) {
+        controller.up_pressed.then(|| self.walk(controller.speed * duration));
+        controller.down_pressed.then(|| self.walk(-controller.speed * duration));
+        controller.right_pressed.then(|| self.strafe(controller.speed * duration));
+        controller.left_pressed.then(|| self.strafe(-controller.speed * duration));
+
+        controller.dragged.then(|| {
+            let theta = controller.current_cursor.0 - controller.last_cursor.0;
+            let phi = controller.current_cursor.1 - controller.last_cursor.1;
+
+            self.pitch(phi as f32);
+            self.rotate_y(theta as f32);
+        });
     }
 }

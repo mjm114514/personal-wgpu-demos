@@ -1,4 +1,6 @@
 use cgmath::{Deg, PerspectiveFov};
+use controller::Controller;
+use timer::Timer;
 use wgpu::util::DeviceExt;
 use winit::{
     event::*,
@@ -10,6 +12,8 @@ use camera::Camera;
 
 mod texture;
 mod camera;
+mod controller;
+mod timer;
 
 #[repr(C)]
 #[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
@@ -88,10 +92,13 @@ struct State {
     diffuse_bind_group: wgpu::BindGroup,
     diffuse_texture: texture::Texture,
 
+    uniforms: Uniforms,
     uniform_bind_group: wgpu::BindGroup,
     uniform_buffer: wgpu::Buffer,
 
     camera: Camera,
+    controller: Controller,
+    timer: Timer,
 }
 
 impl State {
@@ -251,7 +258,7 @@ impl State {
                 topology: wgpu::PrimitiveTopology::TriangleList,
                 strip_index_format: None,
                 front_face: wgpu::FrontFace::Ccw,
-                cull_mode: wgpu::CullMode::Back,
+                cull_mode: wgpu::CullMode::None,
                 polygon_mode: wgpu::PolygonMode::Fill,
             },
             depth_stencil: None,
@@ -281,6 +288,8 @@ impl State {
         let num_vertices = VERTICES.len() as u32;
         let num_indices = INDICES.len() as u32;
 
+        let controller = Controller::new(10.0);
+        let timer = Timer::new();
 
         Self {
             surface,
@@ -298,10 +307,13 @@ impl State {
             diffuse_bind_group,
             diffuse_texture,
 
+            uniforms,
             uniform_bind_group,
             uniform_buffer,
 
             camera,
+            controller,
+            timer,
         }
     }
 
@@ -320,10 +332,14 @@ impl State {
     }
 
     fn input(&mut self, event: &WindowEvent) -> bool {
-        false
+        self.controller.process_events(event)
     }
 
     fn update(&mut self) {
+        self.timer.tick();
+        self.controller.update_all(&mut [&mut self.camera], self.timer.delta_time());
+        self.uniforms.update_view_proj(&self.camera);
+        self.queue.write_buffer(&self.uniform_buffer, 0, bytemuck::cast_slice(&[self.uniforms]));
     }
 
     fn render(&mut self) -> Result<(), wgpu::SwapChainError> {
