@@ -46,17 +46,57 @@ impl Vertex {
 }
 
 const VERTICES: &[Vertex] = &[
-    Vertex { position: [-0.0868241, 0.49240386, 0.0], tex_coords: [0.4131759, 0.00759614], }, // A
-    Vertex { position: [-0.49513406, 0.06958647, 0.0], tex_coords: [0.0048659444, 0.43041354], }, // B
-    Vertex { position: [-0.21918549, -0.44939706, 0.0], tex_coords: [0.28081453, 0.949397057], }, // C
-    Vertex { position: [0.35966998, -0.3473291, 0.0], tex_coords: [0.85967, 0.84732911], }, // D
-    Vertex { position: [0.44147372, 0.2347359, 0.0], tex_coords: [0.9414737, 0.2652641], }, // E
+    // Front face
+    Vertex{ position: [-1.0, -1.0, -1.0], tex_coords: [0.0, 1.0] },
+    Vertex{ position: [-1.0,  1.0, -1.0], tex_coords: [0.0, 0.0] },
+    Vertex{ position: [ 1.0,  1.0, -1.0], tex_coords: [1.0, 0.0] },
+    Vertex{ position: [ 1.0, -1.0, -1.0], tex_coords: [1.0, 1.0] },
+    // back face
+    Vertex{ position: [-1.0, -1.0,  1.0], tex_coords: [1.0, 1.0] },
+    Vertex{ position: [ 1.0, -1.0,  1.0], tex_coords: [0.0, 1.0] },
+    Vertex{ position: [ 1.0,  1.0,  1.0], tex_coords: [0.0, 0.0] },
+    Vertex{ position: [-1.0,  1.0,  1.0], tex_coords: [1.0, 0.0] },
+    // top face
+    Vertex{ position: [-1.0,  1.0, -1.0], tex_coords: [0.0, 1.0] },
+    Vertex{ position: [-1.0,  1.0,  1.0], tex_coords: [0.0, 0.0] },
+    Vertex{ position: [ 1.0,  1.0,  1.0], tex_coords: [1.0, 0.0] },
+    Vertex{ position: [ 1.0,  1.0, -1.0], tex_coords: [1.0, 1.0] },
+    // bottom face
+    Vertex{ position: [-1.0, -1.0, -1.0], tex_coords: [1.0, 1.0] },
+    Vertex{ position: [ 1.0, -1.0, -1.0], tex_coords: [0.0, 1.0] },
+    Vertex{ position: [ 1.0, -1.0,  1.0], tex_coords: [0.0, 0.0] },
+    Vertex{ position: [-1.0, -1.0,  1.0], tex_coords: [1.0, 0.0] },
+    // left face
+    Vertex{ position: [-1.0, -1.0,  1.0], tex_coords: [0.0, 1.0] },
+    Vertex{ position: [-1.0,  1.0,  1.0], tex_coords: [0.0, 0.0] },
+    Vertex{ position: [-1.0,  1.0, -1.0], tex_coords: [1.0, 0.0] },
+    Vertex{ position: [-1.0, -1.0, -1.0], tex_coords: [1.0, 1.0] },
+    // right face
+    Vertex{ position: [ 1.0, -1.0, -1.0], tex_coords: [0.0, 1.0] },
+    Vertex{ position: [ 1.0,  1.0, -1.0], tex_coords: [0.0, 0.0] },
+    Vertex{ position: [ 1.0,  1.0,  1.0], tex_coords: [1.0, 0.0] },
+    Vertex{ position: [ 1.0, -1.0,  1.0], tex_coords: [1.0, 1.0] },
 ];
 
 const INDICES: &[u16] = &[
-    0, 1, 4,
-    1, 2, 4,
-    2, 3, 4,
+    // front face
+    0, 1, 2,
+    0, 2, 3,
+    // back face
+    4, 5, 6,
+    4, 6, 7,
+    // left face
+    8, 9, 10,
+    8, 10, 11,
+    // right face
+    12, 13, 14,
+    12, 14, 15,
+    // top face
+    16, 17, 18,
+    16, 18, 19,
+    // bottom face
+    20, 21, 22,
+    20, 22, 23,
 ];
 
 #[repr(C)]
@@ -261,8 +301,8 @@ impl State {
             primitive: wgpu::PrimitiveState {
                 topology: wgpu::PrimitiveTopology::TriangleList,
                 strip_index_format: None,
-                front_face: wgpu::FrontFace::Ccw,
-                cull_mode: wgpu::CullMode::None,
+                front_face: wgpu::FrontFace::Cw,
+                cull_mode: wgpu::CullMode::Back,
                 polygon_mode: wgpu::PolygonMode::Fill,
             },
             depth_stencil: None,
