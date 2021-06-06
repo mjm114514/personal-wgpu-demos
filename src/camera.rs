@@ -9,8 +9,8 @@ use crate::controller::{ControllerUpdate, Controller};
 pub const OPENGL_TO_WGPU_MATRIX: cgmath::Matrix4<f32> = cgmath::Matrix4::new(
     1.0, 0.0, 0.0, 0.0,
     0.0, 1.0, 0.0, 0.0,
-    0.0, 0.0, 0.5, 0.0,
-    0.0, 0.0, 0.5, 1.0,
+    0.0, 0.0, -0.5, -1.0,
+    0.0, 0.0, -0.5, 0.0,
 );
 
 pub struct Camera {
@@ -65,7 +65,7 @@ impl Camera {
     }
 
     pub fn pitch(&mut self, angle: f32) {
-        self.transform.rot = Quaternion::from_angle_x(Deg(angle)) * self.transform.rot;
+        self.transform.rot = Quaternion::from_axis_angle(self.right(), Deg(angle)) * self.transform.rot;
     }
 }
 
@@ -80,8 +80,8 @@ impl ControllerUpdate for Camera {
             let theta = controller.current_cursor.0 - controller.last_cursor.0;
             let phi = controller.current_cursor.1 - controller.last_cursor.1;
 
-            self.pitch(phi as f32);
-            self.rotate_y(theta as f32);
+            self.pitch(0.25 * phi as f32);
+            self.rotate_y(0.25 * theta as f32);
         });
     }
 }

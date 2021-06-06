@@ -1,3 +1,5 @@
+use core::time;
+
 use cgmath::{Deg, PerspectiveFov};
 use controller::Controller;
 use timer::Timer;
@@ -186,6 +188,8 @@ impl State {
 
         let camera = Camera::new(swap_chain_desc.width as f32 / swap_chain_desc.height as f32);
 
+        println!("{:?}", camera.projection_matrix);
+
         let mut uniforms = Uniforms::new();
         uniforms.update_view_proj(&camera);
 
@@ -338,6 +342,7 @@ impl State {
     fn update(&mut self) {
         self.timer.tick();
         self.controller.update_all(&mut [&mut self.camera], self.timer.delta_time());
+        println!("{:?}", self.camera.right());
         self.uniforms.update_view_proj(&self.camera);
         self.queue.write_buffer(&self.uniform_buffer, 0, bytemuck::cast_slice(&[self.uniforms]));
     }
@@ -396,6 +401,9 @@ fn main() {
 
     let mut state = block_on(State::new(&window));
 
+    let mut frame_count = 0u32;
+    let mut time_elapsed = 0f32;
+
     event_loop.run(move |event, _, control_flow| match event {
         Event::WindowEvent {
             ref event,
@@ -437,11 +445,21 @@ fn main() {
                 // All other errors (Outdated, Timeout) should be resolved by the next frame.
                 Err(e) => eprint!("{:?}", e),
             }
+            frame_count += 1;
         },
 
         Event::MainEventsCleared => {
             // RedrawRequest will only trigger once, unless we manually request it.
             window.request_redraw();
+            let total_time = state.timer.total_time();
+            if total_time - time_elapsed >= 1.0 {
+                let fps = frame_count as f32 / (total_time - time_elapsed);
+                window.set_title(format!("fps: {}", fps).as_str());
+
+                // Reset for next average.
+                frame_count = 0;
+                time_elapsed = total_time;
+            }
         },
 
         _ => {}
