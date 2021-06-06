@@ -369,8 +369,8 @@ impl State {
 
         self.camera.set_lens(PerspectiveFov {
             aspect: self.swap_chain_desc.width as f32 / self.swap_chain_desc.height as f32,
-            far: 0.1,
-            near: 100.0,
+            near: 0.1,
+            far: 100.0,
             fovy: Deg(45.0).into(),
         });
     }
@@ -382,7 +382,6 @@ impl State {
     fn update(&mut self) {
         self.timer.tick();
         self.controller.update_all(&mut [&mut self.camera], self.timer.delta_time());
-        println!("{:?}", self.camera.right());
         self.uniforms.update_view_proj(&self.camera);
         self.queue.write_buffer(&self.uniform_buffer, 0, bytemuck::cast_slice(&[self.uniforms]));
     }
