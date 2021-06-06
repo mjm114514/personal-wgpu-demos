@@ -228,8 +228,6 @@ impl State {
 
         let camera = Camera::new(swap_chain_desc.width as f32 / swap_chain_desc.height as f32);
 
-        println!("{:?}", camera.projection_matrix);
-
         let mut uniforms = Uniforms::new();
         uniforms.update_view_proj(&camera);
 
