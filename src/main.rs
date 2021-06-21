@@ -14,6 +14,7 @@ mod texture;
 mod camera;
 mod controller;
 mod timer;
+mod model;
 
 #[repr(C)]
 #[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
