@@ -1,3 +1,9 @@
+mod texture;
+mod camera;
+mod controller;
+mod timer;
+mod model;
+
 use cgmath::{Decomposed, Deg, InnerSpace, Matrix4, One, PerspectiveFov, Quaternion, Rotation3, Vector3, Zero};
 use controller::Controller;
 use timer::Timer;
@@ -9,94 +15,7 @@ use winit::{
 };
 use futures::executor::block_on;
 use camera::Camera;
-
-mod texture;
-mod camera;
-mod controller;
-mod timer;
-mod model;
-
-#[repr(C)]
-#[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
-struct Vertex {
-    position: [f32; 3],
-    tex_coords: [f32; 2],
-}
-
-impl Vertex {
-    fn desc<'a>() -> wgpu::VertexBufferLayout<'a> {
-        wgpu::VertexBufferLayout {
-            array_stride: std::mem::size_of::<Vertex>() as wgpu::BufferAddress,
-            step_mode: wgpu::InputStepMode::Vertex,
-            attributes: &[
-                wgpu::VertexAttribute {
-                    offset: 0,
-                    shader_location: 0,
-                    format: wgpu::VertexFormat::Float3,
-                },
-                wgpu::VertexAttribute {
-                    offset: std::mem::size_of::<[f32; 3]>() as wgpu::BufferAddress,
-                    shader_location: 1,
-                    format: wgpu::VertexFormat::Float2,
-                },
-            ],
-        }
-    }
-}
-
-const VERTICES: &[Vertex] = &[
-    // Front face
-    Vertex{ position: [-1.0, -1.0, -1.0], tex_coords: [0.0, 1.0] },
-    Vertex{ position: [-1.0,  1.0, -1.0], tex_coords: [0.0, 0.0] },
-    Vertex{ position: [ 1.0,  1.0, -1.0], tex_coords: [1.0, 0.0] },
-    Vertex{ position: [ 1.0, -1.0, -1.0], tex_coords: [1.0, 1.0] },
-    // back face
-    Vertex{ position: [-1.0, -1.0,  1.0], tex_coords: [1.0, 1.0] },
-    Vertex{ position: [ 1.0, -1.0,  1.0], tex_coords: [0.0, 1.0] },
-    Vertex{ position: [ 1.0,  1.0,  1.0], tex_coords: [0.0, 0.0] },
-    Vertex{ position: [-1.0,  1.0,  1.0], tex_coords: [1.0, 0.0] },
-    // top face
-    Vertex{ position: [-1.0,  1.0, -1.0], tex_coords: [0.0, 1.0] },
-    Vertex{ position: [-1.0,  1.0,  1.0], tex_coords: [0.0, 0.0] },
-    Vertex{ position: [ 1.0,  1.0,  1.0], tex_coords: [1.0, 0.0] },
-    Vertex{ position: [ 1.0,  1.0, -1.0], tex_coords: [1.0, 1.0] },
-    // bottom face
-    Vertex{ position: [-1.0, -1.0, -1.0], tex_coords: [1.0, 1.0] },
-    Vertex{ position: [ 1.0, -1.0, -1.0], tex_coords: [0.0, 1.0] },
-    Vertex{ position: [ 1.0, -1.0,  1.0], tex_coords: [0.0, 0.0] },
-    Vertex{ position: [-1.0, -1.0,  1.0], tex_coords: [1.0, 0.0] },
-    // left face
-    Vertex{ position: [-1.0, -1.0,  1.0], tex_coords: [0.0, 1.0] },
-    Vertex{ position: [-1.0,  1.0,  1.0], tex_coords: [0.0, 0.0] },
-    Vertex{ position: [-1.0,  1.0, -1.0], tex_coords: [1.0, 0.0] },
-    Vertex{ position: [-1.0, -1.0, -1.0], tex_coords: [1.0, 1.0] },
-    // right face
-    Vertex{ position: [ 1.0, -1.0, -1.0], tex_coords: [0.0, 1.0] },
-    Vertex{ position: [ 1.0,  1.0, -1.0], tex_coords: [0.0, 0.0] },
-    Vertex{ position: [ 1.0,  1.0,  1.0], tex_coords: [1.0, 0.0] },
-    Vertex{ position: [ 1.0, -1.0,  1.0], tex_coords: [1.0, 1.0] },
-];
-
-const INDICES: &[u16] = &[
-    // front face
-    0, 1, 2,
-    0, 2, 3,
-    // back face
-    4, 5, 6,
-    4, 6, 7,
-    // left face
-    8, 9, 10,
-    8, 10, 11,
-    // right face
-    12, 13, 14,
-    12, 14, 15,
-    // top face
-    16, 17, 18,
-    16, 18, 19,
-    // bottom face
-    20, 21, 22,
-    20, 22, 23,
-];
+use model::{ Vertex, Mesh, AsVertexBuffer };
 
 #[repr(C)]
 #[derive(Debug, Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
@@ -219,7 +138,7 @@ impl State {
 
         let (device, queue) = adapter.request_device(
             &wgpu::DeviceDescriptor {
-                features: wgpu::Features::empty(),
+                features: wgpu::Features::NON_FILL_POLYGON_MODE,
                 limits: wgpu::Limits::default(),
                 label: None
             },
@@ -367,7 +286,7 @@ impl State {
                 strip_index_format: None,
                 front_face: wgpu::FrontFace::Cw,
                 cull_mode: wgpu::CullMode::Back,
-                polygon_mode: wgpu::PolygonMode::Fill,
+                polygon_mode: wgpu::PolygonMode::Line,
             },
             depth_stencil: Some(wgpu::DepthStencilState {
                 format: texture::Texture::DEPTH_FORMAT,
@@ -385,10 +304,12 @@ impl State {
             }
         });
 
+        let mesh = Mesh::brick(1.0, 0.5, 1.0, 2);
+
         let vertex_buffer = device.create_buffer_init(
             &wgpu::util::BufferInitDescriptor {
                 label: Some("Vertex Buffer"),
-                contents: bytemuck::cast_slice(VERTICES),
+                contents: bytemuck::cast_slice(&mesh.vertices),
                 usage: wgpu::BufferUsage::VERTEX,
             }
         );
@@ -396,13 +317,13 @@ impl State {
         let index_buffer = device.create_buffer_init(
             &wgpu::util::BufferInitDescriptor {
                 label: Some("Index Buffer"),
-                contents: bytemuck::cast_slice(INDICES),
+                contents: bytemuck::cast_slice(&mesh.indices),
                 usage: wgpu::BufferUsage::INDEX,
             }
         );
 
-        let num_vertices = VERTICES.len() as u32;
-        let num_indices = INDICES.len() as u32;
+        let num_vertices = mesh.vertices.len() as u32;
+        let num_indices = mesh.indices.len() as u32;
 
         let instances = (0..NUM_INSTANCE_PER_ROW).flat_map(|z| {
             (0..NUM_INSTANCE_PER_ROW).map(move |x| {
@@ -541,7 +462,7 @@ impl State {
             render_pass.set_vertex_buffer(0, self.vertex_buffer.slice(..));
 
             render_pass.set_vertex_buffer(1, self.instance_buffer.slice(..));
-            render_pass.set_index_buffer(self.index_buffer.slice(..), wgpu::IndexFormat::Uint16);
+            render_pass.set_index_buffer(self.index_buffer.slice(..), wgpu::IndexFormat::Uint32);
 
             render_pass.draw_indexed(0..self.num_indices, 0, 0..self.instances.len() as _);
         }

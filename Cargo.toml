@@ -18,6 +18,9 @@ anyhow = "1.0"
 version = "0.7"
 features = ["vulkan-portability"]
 
+[dependencies.tobj]
+default-features = false
+
 [build-dependencies]
 anyhow = "1.0"
 fs_extra = "1.0"
