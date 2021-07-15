@@ -1,4 +1,6 @@
 use std::f32;
+use wgpu::util::DeviceExt;
+use crate::render_item::RenderItem;
 
 pub trait AsVertexBuffer {
     fn desc<'a>() -> wgpu::VertexBufferLayout<'a>;
@@ -245,6 +247,36 @@ impl Mesh {
                 m0_index, m1_index, m2_index,
                 m2_index, m1_index, v2_index,
             ]);
+        }
+    }
+}
+
+pub trait LoadMesh {
+    fn load_mesh<'a>(&self, mesh: &Mesh) -> RenderItem;
+}
+
+impl LoadMesh for wgpu::Device {
+    fn load_mesh<'a>(&self, mesh: &Mesh) -> RenderItem {
+        let vertex_buffer = self.create_buffer_init(
+            &wgpu::util::BufferInitDescriptor {
+                label: Some("load mesh vertex"),
+                contents: bytemuck::cast_slice(&mesh.vertices),
+                usage: wgpu::BufferUsage::VERTEX,
+            }
+        );
+
+        let index_buffer = self.create_buffer_init(
+            &wgpu::util::BufferInitDescriptor {
+                label: Some("load mesh index"),
+                contents: bytemuck::cast_slice(&mesh.indices),
+                usage: wgpu::BufferUsage::INDEX,
+            }
+        );
+
+        RenderItem {
+            vertex_buffer,
+            index_buffer,
+            num_indices: mesh.indices.len() as u32,
         }
     }
 }

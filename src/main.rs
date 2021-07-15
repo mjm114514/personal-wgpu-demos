@@ -3,6 +3,7 @@ mod camera;
 mod controller;
 mod timer;
 mod model;
+mod render_item;
 
 use cgmath::{Decomposed, Deg, InnerSpace, Matrix4, One, PerspectiveFov, Quaternion, Rotation3, Vector3, Zero};
 use controller::Controller;
@@ -15,7 +16,7 @@ use winit::{
 };
 use futures::executor::block_on;
 use camera::Camera;
-use model::{ Vertex, Mesh, AsVertexBuffer };
+use model::{Vertex, Mesh, AsVertexBuffer};
 
 #[repr(C)]
 #[derive(Debug, Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
@@ -286,7 +287,7 @@ impl State {
                 strip_index_format: None,
                 front_face: wgpu::FrontFace::Cw,
                 cull_mode: wgpu::CullMode::Back,
-                polygon_mode: wgpu::PolygonMode::Line,
+                polygon_mode: wgpu::PolygonMode::Fill,
             },
             depth_stencil: Some(wgpu::DepthStencilState {
                 format: texture::Texture::DEPTH_FORMAT,
