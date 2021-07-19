@@ -1,5 +1,3 @@
-use std::time::Instant;
-
 use winit::event::{
     ElementState, KeyboardInput, WindowEvent, VirtualKeyCode,
     MouseButton,

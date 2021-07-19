@@ -1,4 +1,5 @@
 use std::f32;
+use cgmath::InnerSpace;
 use wgpu::util::DeviceExt;
 use crate::render_item::RenderItem;
 
@@ -180,23 +181,81 @@ impl Mesh {
             for j in 0..slice {
                 let theta = j as f32 * theta_step;
 
-                let position = [
+                let mut position: cgmath::Vector3<f32> = [
                     radius * phi.sin() * theta.cos(),
                     radius * phi.cos(),
                     radius * phi.sin() * theta.sin(),
-                ];
+                ].into();
 
-                let tangent = [
+                let mut tangent: cgmath::Vector3<f32> = [
                     -radius * phi.sin() * theta.sin(),
                     0.0,
                     radius * phi.sin() * theta.cos(),
-                ];
+                ].into();
 
-                let tex_coord = [theta / (f32::consts::PI * 2.0f32), phi / f32::consts::PI];
+                tangent.normalize();
+
+                let tex_coord: cgmath::Vector2<f32> = [
+                    theta / (f32::consts::PI * 2.0f32),
+                    phi / f32::consts::PI
+                ].into();
+
+                mesh.vertices.push(Vertex {
+                    position: position.into(),
+                    normal: position.normalize().into(),
+                    tangent: tangent.normalize().into(),
+                    tex_coord: tex_coord.into(),
+                });
             }
         }
 
-        todo!()
+        mesh.vertices.push(bottom);
+
+        //
+        // Compute indices for top stack.  The top stack was written first to the vertex buffer
+        // and connects the top pole to the first ring.
+        //
+
+        for i in 0..slice {
+            mesh.indices.push(0);
+            mesh.indices.push(i + 2);
+            mesh.indices.push(i + 1);
+        }
+
+        //
+        // Compute indices for inner stacks (not connected to poles).
+        //
+
+        // Offset the indices to the index of the first vertex in the first ring.
+        // This is just skipping the top pole vertex.
+        for i in 0..(stack - 2) {
+            for j in 0..slice {
+                mesh.indices.push(1 + i * (slice + 1) + j);
+                mesh.indices.push(1 + i * (slice + 1) + j + 1);
+                mesh.indices.push(1 + (i + 1) * (slice + 1) + j);
+
+                mesh.indices.push(1 + (i + 1) * (slice + 1) + j);
+                mesh.indices.push(1 + i * (slice + 1) + j + 1);
+                mesh.indices.push(1 + (i + 1) * (slice + 1) + j + 1);
+            }
+        }
+
+        //
+        // Compute indices for bottom stack.  The bottom stack was written last to the vertex buffer
+        // and connects the bottom pole to the bottom ring.
+        //
+
+        // South pole vertex was added last.
+        let south_pole_index = mesh.indices.len() as u32 - 1;
+        let base_index = south_pole_index - slice - 1;
+
+        for i in 0..slice {
+            mesh.indices.push(south_pole_index);
+            mesh.indices.push(base_index + i);
+            mesh.indices.push(base_index + i + 1);
+        }
+
+        mesh
     }
 
     fn subdivide(&mut self) {

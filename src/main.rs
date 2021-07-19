@@ -7,16 +7,18 @@ mod render_item;
 
 use cgmath::{Decomposed, Deg, InnerSpace, Matrix4, One, PerspectiveFov, Quaternion, Rotation3, Vector3, Zero};
 use controller::Controller;
+use render_item::{DrawRenderItem, RenderItem};
 use timer::Timer;
-use wgpu::{DepthStencilState, util::DeviceExt};
+use wgpu::util::DeviceExt;
 use winit::{
     event::*,
     event_loop::{ControlFlow, EventLoop},
     window::{WindowBuilder, Window},
 };
-use futures::executor::block_on;
 use camera::Camera;
 use model::{Vertex, Mesh, AsVertexBuffer};
+
+use crate::model::LoadMesh;
 
 #[repr(C)]
 #[derive(Debug, Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
@@ -101,12 +103,9 @@ struct State {
     size: winit::dpi::PhysicalSize<u32>, 
 
     render_pipeline: wgpu::RenderPipeline,
-    vertex_buffer: wgpu::Buffer,
-    index_buffer: wgpu::Buffer,
-    num_vertices: u32,
-    num_indices: u32,
-    depth_texture: texture::Texture,
+    render_item: RenderItem,
 
+    depth_texture: texture::Texture,
 
     diffuse_bind_group: wgpu::BindGroup,
     diffuse_texture: texture::Texture,
@@ -307,24 +306,7 @@ impl State {
 
         let mesh = Mesh::brick(1.0, 0.5, 1.0, 2);
 
-        let vertex_buffer = device.create_buffer_init(
-            &wgpu::util::BufferInitDescriptor {
-                label: Some("Vertex Buffer"),
-                contents: bytemuck::cast_slice(&mesh.vertices),
-                usage: wgpu::BufferUsage::VERTEX,
-            }
-        );
-
-        let index_buffer = device.create_buffer_init(
-            &wgpu::util::BufferInitDescriptor {
-                label: Some("Index Buffer"),
-                contents: bytemuck::cast_slice(&mesh.indices),
-                usage: wgpu::BufferUsage::INDEX,
-            }
-        );
-
-        let num_vertices = mesh.vertices.len() as u32;
-        let num_indices = mesh.indices.len() as u32;
+        let render_item = device.load_mesh(&mesh);
 
         let instances = (0..NUM_INSTANCE_PER_ROW).flat_map(|z| {
             (0..NUM_INSTANCE_PER_ROW).map(move |x| {
@@ -366,10 +348,7 @@ impl State {
             size,
 
             render_pipeline,
-            vertex_buffer,
-            index_buffer,
-            num_vertices,
-            num_indices,
+            render_item,
             depth_texture,
 
             diffuse_bind_group,
@@ -460,12 +439,10 @@ impl State {
             render_pass.set_pipeline(&self.render_pipeline);
             render_pass.set_bind_group(0, &self.diffuse_bind_group, &[]);
             render_pass.set_bind_group(1, &self.uniform_bind_group, &[]);
-            render_pass.set_vertex_buffer(0, self.vertex_buffer.slice(..));
 
             render_pass.set_vertex_buffer(1, self.instance_buffer.slice(..));
-            render_pass.set_index_buffer(self.index_buffer.slice(..), wgpu::IndexFormat::Uint32);
 
-            render_pass.draw_indexed(0..self.num_indices, 0, 0..self.instances.len() as _);
+            render_pass.draw_item_instanced(&self.render_item, 0..self.instances.len() as _);
         }
 
         self.queue.submit(std::iter::once(encoder.finish()));
