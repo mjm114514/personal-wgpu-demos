@@ -7,6 +7,7 @@ mod render_item;
 
 use cgmath::{Decomposed, Deg, InnerSpace, Matrix4, One, PerspectiveFov, Quaternion, Rotation3, Vector3, Zero};
 use controller::Controller;
+use futures::executor::block_on;
 use render_item::{DrawRenderItem, RenderItem};
 use timer::Timer;
 use wgpu::util::DeviceExt;
