@@ -287,7 +287,7 @@ impl State {
                 strip_index_format: None,
                 front_face: wgpu::FrontFace::Cw,
                 cull_mode: wgpu::CullMode::Back,
-                polygon_mode: wgpu::PolygonMode::Fill,
+                polygon_mode: wgpu::PolygonMode::Line,
             },
             depth_stencil: Some(wgpu::DepthStencilState {
                 format: texture::Texture::DEPTH_FORMAT,
@@ -306,8 +306,9 @@ impl State {
         });
 
         let mesh = Mesh::brick(1.0, 0.5, 1.0, 2);
+        let sphere = Mesh::sphere(1.0, 30, 30);
 
-        let render_item = device.load_mesh(&mesh);
+        let render_item = device.load_mesh(&sphere);
 
         let instances = (0..NUM_INSTANCE_PER_ROW).flat_map(|z| {
             (0..NUM_INSTANCE_PER_ROW).map(move |x| {

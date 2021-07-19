@@ -178,7 +178,7 @@ impl Mesh {
 
         for i in 1..stack {
             let phi = i as f32 * phi_step;
-            for j in 0..slice {
+            for j in 0..(slice + 1) {
                 let theta = j as f32 * theta_step;
 
                 let mut position: cgmath::Vector3<f32> = [
@@ -228,15 +228,16 @@ impl Mesh {
 
         // Offset the indices to the index of the first vertex in the first ring.
         // This is just skipping the top pole vertex.
+        let ring_vertices = slice + 1;
         for i in 0..(stack - 2) {
             for j in 0..slice {
-                mesh.indices.push(1 + i * (slice + 1) + j);
-                mesh.indices.push(1 + i * (slice + 1) + j + 1);
-                mesh.indices.push(1 + (i + 1) * (slice + 1) + j);
+                mesh.indices.push(1 + i * ring_vertices + j);
+                mesh.indices.push(1 + i * ring_vertices + j + 1);
+                mesh.indices.push(1 + (i + 1) * ring_vertices + j);
 
-                mesh.indices.push(1 + (i + 1) * (slice + 1) + j);
-                mesh.indices.push(1 + i * (slice + 1) + j + 1);
-                mesh.indices.push(1 + (i + 1) * (slice + 1) + j + 1);
+                mesh.indices.push(1 + (i + 1) * ring_vertices + j);
+                mesh.indices.push(1 + i * ring_vertices + j + 1);
+                mesh.indices.push(1 + (i + 1) * ring_vertices + j + 1);
             }
         }
 
