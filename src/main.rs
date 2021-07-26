@@ -156,10 +156,10 @@ impl State {
 
         let swap_chain = device.create_swap_chain(&surface, &swap_chain_desc);
 
-        let vs_module = device.create_shader_module(&wgpu::include_spirv!("shader.vert.spv"));
-        let fs_module = device.create_shader_module(&wgpu::include_spirv!("shader.frag.spv"));
+        let vs_module = device.create_shader_module(&wgpu::include_spirv!("resources/shaders/shader.vert.spv"));
+        let fs_module = device.create_shader_module(&wgpu::include_spirv!("resources/shaders/shader.frag.spv"));
 
-        let diffuse_bytes = include_bytes!("happy-tree.png");
+        let diffuse_bytes = include_bytes!("resources/textures/happy-tree.png");
         let diffuse_texture = texture::Texture::from_bytes(&device, &queue, diffuse_bytes, "happy-tree.png").unwrap();
 
         let texture_bind_group_layout = device.create_bind_group_layout(
