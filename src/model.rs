@@ -1,5 +1,5 @@
 use std::f32;
-use cgmath::InnerSpace;
+use cgmath::{InnerSpace, Vector2, Vector3};
 use wgpu::util::DeviceExt;
 use crate::render_item::RenderItem;
 
@@ -8,37 +8,25 @@ pub trait AsVertexBuffer {
 }
 
 #[repr(C)]
-#[derive(Debug, Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
+#[derive(Debug, Clone, Copy)]
 pub struct Vertex {
-    pub position: [f32; 3],
-    pub normal: [f32; 3],
-    pub tangent: [f32; 3],
-    pub tex_coord: [f32; 2],
+    pub position: Vector3<f32>,
+    pub normal: Vector3<f32>,
+    pub tangent: Vector3<f32>,
+    pub tex_coord: Vector2<f32>,
 }
+
+unsafe impl bytemuck::Zeroable for Vertex {}
+unsafe impl bytemuck::Pod for Vertex {}
 
 // TODO: use macro to reduce the redundancy code.
 impl Vertex {
     fn get_middle(v0: &Self, v1: &Self) -> Self {
         Self {
-            position: [
-                (v0.position[0] + v1.position[0]) / 2.0,
-                (v0.position[1] + v1.position[1]) / 2.0,
-                (v0.position[2] + v1.position[2]) / 2.0,
-            ],
-            normal: [
-                (v0.normal[0] + v1.normal[0]) / 2.0,
-                (v0.normal[1] + v1.normal[1]) / 2.0,
-                (v0.normal[2] + v1.normal[2]) / 2.0,
-            ],
-            tangent: [
-                (v0.tangent[0] + v1.tangent[0]) / 2.0,
-                (v0.tangent[1] + v1.tangent[1]) / 2.0,
-                (v0.tangent[2] + v1.tangent[2]) / 2.0,
-            ],
-            tex_coord: [
-                (v0.tex_coord[0] + v1.tex_coord[0]) / 2.0,
-                (v0.tex_coord[1] + v1.tex_coord[1]) / 2.0,
-            ]
+            position: (v0.position + v1.position) / 2.0,
+            normal: (v0.normal + v1.normal) / 2.0,
+            tangent: (v0.tangent + v1.tangent) / 2.0,
+            tex_coord: (v0.tex_coord + v1.tex_coord) / 2.0,
         }
     }
 }
@@ -82,10 +70,18 @@ macro_rules! vertex {
         $u:expr,  $v:expr
     ) => {
         Vertex {
-            position: [$px, $py, $pz],
-            normal: [$nx, $ny, $nz],
-            tangent: [$tx, $ty, $tz],
-            tex_coord: [$u, $v],
+            position: [$px, $py, $pz].into(),
+            normal: [$nx, $ny, $nz].into(),
+            tangent: [$tx, $ty, $tz].into(),
+            tex_coord: [$u, $v].into(),
+        }
+    };
+    ($px:expr, $py:expr, $pz:expr) => {
+        Vertex {
+            position: [$px, $py, $pz].into(),
+            normal: [0.0, 0.0, 0.0].into(),
+            tangent: [0.0, 0.0, 0.0].into(),
+            tex_coord: [0.0, 0.0].into(),
         }
     };
 }
@@ -254,6 +250,58 @@ impl Mesh {
             mesh.indices.push(south_pole_index);
             mesh.indices.push(base_index + i);
             mesh.indices.push(base_index + i + 1);
+        }
+
+        mesh
+    }
+
+    pub fn geo_sphere(radius: f32, subdivision: u32) -> Self {
+        let X = 0.525731f32;
+        let Z = 0.850651f32;
+
+        let mut vertices = vec![
+    		vertex!(-X, 0.0, Z),  vertex!(X, 0.0, Z),
+    		vertex!(-X, 0.0, -Z), vertex!(X, 0.0, -Z),
+    		vertex!(0.0, Z, X),   vertex!(0.0, Z, -X),
+    		vertex!(0.0, -Z, X),  vertex!(0.0, -Z, -X),
+    		vertex!(Z, X, 0.0),   vertex!(-Z, X, 0.0),
+    		vertex!(Z, -X, 0.0),  vertex!(-Z, -X, 0.0)
+        ];
+
+        let mut indices = vec![
+    		1,4,0,  4,9,0,  4,5,9,  8,5,4,  1,8,4,
+    		1,10,8, 10,3,8, 8,3,5,  3,2,5,  3,7,2,
+    		3,10,7, 10,6,7, 6,11,7, 6,0,11, 6,1,0,
+    		10,1,6, 11,0,9, 2,11,9, 5,2,9,  11,2,7
+        ];
+
+        let mut mesh = Self {
+            vertices,
+            indices,
+        };
+
+        for i in 0..subdivision {
+            mesh.subdivide();
+        }
+
+        for vertex in &mut mesh.vertices {
+            vertex.normal = vertex.position.normalize();
+            vertex.position = vertex.normal * radius;
+
+            // Derive texture coordinates from spherical coordinates.
+            let mut theta = vertex.position.z.atan2(vertex.position.x);
+            // Put theta into [0, 2pi]
+            if theta < 0.0 {
+                theta += std::f32::consts::TAU;
+            }
+            let phi = (vertex.position.y / radius).acos();
+
+            vertex.tex_coord.x = theta / std::f32::consts::TAU;
+            vertex.tex_coord.y = phi / std::f32::consts::PI;
+
+            vertex.tangent.x = -radius * phi.sin() * theta.sin();
+            vertex.tangent.y = 0.0;
+            vertex.tangent.z = radius * phi.sin() * theta.cos();
         }
 
         mesh
