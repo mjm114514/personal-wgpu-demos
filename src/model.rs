@@ -243,7 +243,7 @@ impl Mesh {
         //
 
         // South pole vertex was added last.
-        let south_pole_index = mesh.indices.len() as u32 - 1;
+        let south_pole_index = mesh.vertices.len() as u32 - 1;
         let base_index = south_pole_index - slice - 1;
 
         for i in 0..slice {
